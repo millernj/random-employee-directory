@@ -1,0 +1,14 @@
+.loading-logo {
+  animation: loading-logo-spin infinite 5s linear;
+  height: 10vmin;
+  pointer-events: none;
+}
+
+@keyframes loading-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
