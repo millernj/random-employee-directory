@@ -1,16 +1,19 @@
-import React, { useState, useRef } from 'react';
-import { Container, Row } from '../Grid';
+import React, { useState, useEffect } from 'react';
+import { debounce, omit } from 'lodash';
+
+import { Container } from '../Grid';
 import Loading from '../Loading';
-import ColButton from '../ColButton';
+import SortButton from '../SortButton';
 import './style.css';
+import FilterButton from '../FilterButton';
 
 
 
 function getUserValue(user, query) {
   switch(query) {
     case 'name':
-      const { name: { first, last } } = user;
-      return `${first} ${last}`
+      const { name: { title, first, last } } = user;
+      return `${first} ${last} ${title}`
     case 'contact':
       const { email, phone } = user;
       return `${email} ${phone}`
@@ -22,23 +25,75 @@ function getUserValue(user, query) {
   }
 }
 
-function UserTable({ users, setUsers }) {
+function UserTable({ users: inputUsers }) {
 
-  const [sort, setSort] = useState({})
+  const [users, setUsers] = useState([]);
+  const [debounced, setDebounced] = useState();
+  const [sort, setSort] = useState({
+    query: null,
+    ascending: null
+  });
+  const [filters, setFilters] = useState({});
 
-  function sortUsers(query, ascending) {
+  useEffect(() => {
+    setUsers(inputUsers);
+  }, [inputUsers]);
+
+  useEffect(() => {
+    debounced && debounced();
+  }, [debounced])
+
+  useEffect(filterUsers, [filters]);
+  useEffect(sortUsers, [sort]);
+
+  function sortUsers() {
+    
+    let {query, ascending} = sort;
     const source = users.concat();
     const direction = ascending ? 1 : -1;
     source.sort((currentUser, nextUser) => {
       const result = getUserValue(currentUser, query) > getUserValue(nextUser, query) ? direction * 1 : direction * -1
       return result
     });
+
     setUsers(source);
   }
 
+  function filterUsers() {
+    if (Object.keys(filters).length !== 0) {
+      const filtered = inputUsers.filter((user) => {
+        const conditions = Object.entries(filters).map(([ key, value ]) => {
+          const tester = new RegExp(`${value}`, 'i');
+          return tester.test(getUserValue(user, key))
+        }
+  
+        );
+        return conditions.every(a => a);
+      });
+      setUsers(filtered);
+    } else {
+      setUsers(inputUsers);
+    }
+  }
+
+  const handleFilterChange = (event) => {
+    // don't nullify event object
+    event.persist();
+    if ( !debounced ) {
+      let debouncedFunction = debounce(() => {
+        const { name, value } = event.target;
+        if (value) {
+          setFilters({ ...filters, [name]: value});
+        } else {
+          setFilters(omit(filters, name));
+        }
+      }, 300);
+      setDebounced(debouncedFunction);
+    }
+  }
+
   const handleSortToggle = (id, event) => {
-    sortUsers(id, !sort[id]);
-    setSort({ [id]: !sort[id] });
+    setSort({ query: id, ascending: !sort.ascending});
   }
 
   return (
@@ -49,19 +104,22 @@ function UserTable({ users, setUsers }) {
             <tr>
               <th scope="col"></th>
               <th scope="col">
-                <ColButton name={'name'} sorting={{ focus: 'name' in sort, sort: sort.name }} onclick={handleSortToggle}>
+                <SortButton name={'name'} sorting={{ focus: 'name' === sort.query, sort: sort.ascending }} onclick={handleSortToggle}>
                   Name
-                </ColButton>
+                </SortButton>
+                <FilterButton name={'name'} onchange={handleFilterChange}/>
               </th>
               <th scope="col">
-                <ColButton name={'contact'} sorting={{ focus: 'contact' in sort, sort: sort.contact }} onclick={handleSortToggle}>
+                <SortButton name={'contact'} sorting={{ focus: 'contact' === sort.query, sort: sort.ascending }} onclick={handleSortToggle}>
                   Contact
-                </ColButton>
+                </SortButton>
+                <FilterButton name={'contact'} onchange={handleFilterChange}/>
               </th>
               <th scope="col">
-                <ColButton name={'location'} sorting={{ focus: 'location' in sort, sort: sort.location }} onclick={handleSortToggle}>
+                <SortButton name={'location'} sorting={{ focus: 'location' === sort.query, sort: sort.ascending }} onclick={handleSortToggle}>
                   Location
-                </ColButton>
+                </SortButton>
+                <FilterButton name={'location'} onchange={handleFilterChange}/>
               </th>
             </tr>
           </thead>
@@ -79,7 +137,7 @@ function UserTable({ users, setUsers }) {
               )
               :
               <tbody>
-                {users.map(user => <User key={user.email} user={user} />)}
+                {users.map(user => <User key={Math.random()} user={user} />)}
               </tbody>
           }
         </table>
