@@ -21,7 +21,7 @@ const App = () => {
       <Jumbotron>
         <h1>Employee Directory</h1>
       </Jumbotron>
-      <UserTable users={users} setUsers={setUsers} />
+      <UserTable users={users}/>
     </div>
   );
 }
